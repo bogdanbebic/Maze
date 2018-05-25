@@ -1,2 +1,2 @@
-# ASP-dz3
+# ASP1-dz3
 Maze
