@@ -210,7 +210,6 @@ int checkCoordinatesForEdges(MazeDimensions dimensions, Coordinates coordinates)
 	}
 }
 
-
 int checkAllCoordinates(MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
 	int i;
 	int flag = 1;
@@ -218,7 +217,7 @@ int checkAllCoordinates(MazeDimensions dimensions, Coordinates in, Coordinates e
 	for (i = 0; i < numberOfExits; i++) {
 		flag = checkCoordinates(dimensions, exits[i]);
 	}
-	return 1;
+	return flag;
 }
 
 
@@ -242,6 +241,7 @@ int makeWall(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates
 	}
 }
 
+
 void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 	int flagPath = 1, flagWall = 1;
 	Coordinates temp;
@@ -260,6 +260,7 @@ void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 	return;
 }
 
+
 int main() {
 	enum MenuOptions menuOption;
 	int numberOfExits = 1;
@@ -268,9 +269,10 @@ int main() {
 	MazeDimensions dimensions;
 	Coordinates exits[MAX_EXITS], in;
 	int i;
+	int temp;
 
-
-	/*	!!!!!
+	/*
+	*	!!!!!
 	*	Koordinate cvorova su na neparnim indeksima
 	*	Koordinate grana su na parnim i neparnim indeksima (zbir indeksa im je neparan)
 	*	!!!!!
@@ -278,6 +280,10 @@ int main() {
 
 	exits[0].i = hashCoordinates(0);
 	exits[0].j = hashCoordinates(0);
+	for (i = 1; i < MAX_EXITS; i++) {
+		exits[i].i = -1;
+		exits[i].j = -1;
+	}
 	in.i = hashCoordinates(DEFAULT_HEIGHT - 1);
 	in.j = hashCoordinates(DEFAULT_WIDTH - 1);
 
@@ -300,11 +306,18 @@ int main() {
 			break;
 
 		case GenerateMaze:
-			if (maze != NULL && checkAllCoordinates(dimensions, in, exits, numberOfExits)) {
+			if (maze != NULL) {
 
 				// TODO: Primov algoritam za generisanje lavirinta
 
-				// TODO: stavi gde su ulazi i izlazi
+				if (checkCoordinates(dimensions, in)) {
+					// TODO: stavi random gde je ulaz i upisi na mapu
+				}
+				for (i = 0; i < numberOfExits; i++) {
+					if (checkCoordinates(dimensions, exits[i])) {
+						// TODO: stavi random gde je izlaz i upisi na mapu
+					}
+				}
 
 				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
 					printMazeToStdout(maze, dimensions);
@@ -313,16 +326,16 @@ int main() {
 				printMazeToFile(maze, dimensions);
 			}
 			else {
-				printf("There is no maze or coordinates for in or exits are out of bounds\n");
+				printf("There is no maze\n");
 			}
 			break;
 
 		case InputMaze:
-			if (maze != NULL && checkAllCoordinates(dimensions, in, exits, numberOfExits)) {
+			if (maze != NULL) {
 				inputMaze(maze, dimensions);
 			}
 			else {
-				printf("There is no maze or coordinates for in or exits are out of bounds\n");
+				printf("There is no maze\n");
 			}
 			break;
 
@@ -337,8 +350,14 @@ int main() {
 			break;
 
 		case SetNumberOfExits:
-			numberOfExits = setNumberOfExits(numberOfExits);
-			// TODO: random-izuj ostale exit-e
+			temp = setNumberOfExits(numberOfExits);
+			if (temp < numberOfExits) {
+				for (i = temp; i < MAX_EXITS; i++) {
+					exits[i].i = -1;
+					exits[i].j = -1;
+				}
+			}
+			numberOfExits = temp;
 			break;
 
 		case SetCoordinatesForExitsAndIn:
@@ -354,7 +373,10 @@ int main() {
 			deallocateMaze(maze, dimensions.i);
 			dimensions = setMazeDimensions(dimensions);
 			maze = allocateMaze(maze, dimensions);
-			if (maze == NULL) {
+			if (maze != NULL) {
+				initMaze(maze, dimensions);
+			}
+			else {
 				printf("Unsuccessful allocation");
 			}
 			break;
