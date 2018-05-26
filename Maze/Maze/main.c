@@ -14,12 +14,6 @@
 #define unhashCoordinates(x) (((x) - 1) / 2)
 
 
-/*
-*	OVO NE RADI LEPO, POPRAVI OBAVEZNO
-*/
-#define hashCoordinatesForEdges(x) ((x) * 2 + 2)
-#define unhashCoordinatesForEdges(x) (((x) - 2) / 2)
-
 enum MazeObjects { WALL, IN, OUT, PATH };
 
 enum MenuOptions { ExitGame, GenerateMaze, InputMaze, SolveMaze, SetNumberOfExits, SetCoordinatesForExitsAndIn, SetMazeDimensions, NumberOfMenuOptions };
@@ -54,10 +48,8 @@ Coordinates readCoordinatesForEdges() {
 	Coordinates coordinates;
 	printf("Input i coordinate: ");
 	scanf_s("%d", &coordinates.i);
-	coordinates.i = hashCoordinatesForEdges(coordinates.i);
 	printf("Input j coordinate: ");
 	scanf_s("%d", &coordinates.j);
-	coordinates.j = hashCoordinatesForEdges(coordinates.j);
 	return coordinates;
 }
 
@@ -115,6 +107,7 @@ void printMazeToStdout(MazeCell **maze, MazeDimensions dimensions) {
 				putchar(' ');
 				break;
 			}
+			putchar(' ');
 		}
 		putchar('\n');
 	}
@@ -143,6 +136,7 @@ void printMazeToFile(MazeCell **maze, MazeDimensions dimensions) {
 				fputc(' ', outFile);
 				break;
 			}
+			fputc(' ', outFile);
 		}
 		fputc('\n', outFile);
 	}
@@ -207,6 +201,16 @@ int checkCoordinates(MazeDimensions dimensions, Coordinates coordinates) {
 		return 1;
 }
 
+int checkCoordinatesForEdges(MazeDimensions dimensions, Coordinates coordinates) {
+	if (checkCoordinates(dimensions, coordinates) && (coordinates.i + coordinates.j) % 2 == 1 && coordinates.i != 0 && coordinates.j != 0) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+
 int checkAllCoordinates(MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
 	int i;
 	int flag = 1;
@@ -219,10 +223,7 @@ int checkAllCoordinates(MazeDimensions dimensions, Coordinates in, Coordinates e
 
 
 int makePath(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates) {
-	Coordinates temp = coordinates;
-	temp.i = unhashCoordinatesForEdges(temp.i);
-	temp.j = unhashCoordinatesForEdges(temp.j);
-	if (checkCoordinates(dimensions, temp)) {
+	if (checkCoordinatesForEdges(dimensions, coordinates)) {
 		maze[coordinates.i][coordinates.j] = PATH;
 		return 1;
 	}
@@ -232,11 +233,8 @@ int makePath(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates
 }
 
 int makeWall(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates) {
-	Coordinates temp = coordinates;
-	temp.i = unhashCoordinatesForEdges(temp.i);
-	temp.j = unhashCoordinatesForEdges(temp.j);
-	if (checkCoordinates(dimensions, temp)) {
-		(*(maze + coordinates.i))[coordinates.j] = WALL;
+	if (checkCoordinatesForEdges(dimensions, coordinates)) {
+		maze[coordinates.i][coordinates.j] = WALL;
 		return 1;
 	}
 	else {
@@ -340,6 +338,7 @@ int main() {
 
 		case SetNumberOfExits:
 			numberOfExits = setNumberOfExits(numberOfExits);
+			// TODO: random-izuj ostale exit-e
 			break;
 
 		case SetCoordinatesForExitsAndIn:
