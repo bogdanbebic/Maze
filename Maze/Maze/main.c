@@ -66,14 +66,39 @@ Coordinates getRandomNode(MazeDimensions dimensions) {
 	return randomNode;
 }
 
-Coordinates getRandomWall(Coordinates node) {
+Coordinates getRandomWall(MazeCell **maze, Coordinates node) {
 	enum MazeDirections direction;
-	Coordinates randomWall;
-	direction = randomInt(0, NUMBER_OF_DIRECTIONS);
-
+	Coordinates randomWall, temp;
+	enum MazeDirections choice[NUMBER_OF_DIRECTIONS];
+	int walls = 0;
 	randomWall.i = hashCoordinates(node.i);
 	randomWall.j = hashCoordinates(node.j);
-	// TODO: POPRAVI DA UZIMA SAMO ZIDOVE, A NE I PUTEVE
+	temp = randomWall;
+	temp.i--;
+	if (maze[temp.i][temp.j] == WALL) {
+		choice[walls] = UP;
+		walls++;
+	}
+	temp = randomWall;
+	temp.i++;
+	if (maze[temp.i][temp.j] == WALL) {
+		choice[walls] = DOWN;
+		walls++;
+	}
+	temp = randomWall;
+	temp.j--;
+	if (maze[temp.i][temp.j] == WALL) {
+		choice[walls] = LEFT;
+		walls++;
+	}
+	temp = randomWall;
+	temp.j++;
+	if (maze[temp.i][temp.j] == WALL) {
+		choice[walls] = RIGHT;
+		walls++;
+	}
+	direction = choice[randomInt(0, walls)];
+	
 	switch (direction) {
 	case UP:
 		randomWall.i--;
@@ -90,6 +115,7 @@ Coordinates getRandomWall(Coordinates node) {
 	default:
 		break;
 	}
+	
 
 	return randomWall;
 }
@@ -103,7 +129,6 @@ Coordinates readCoordinatesForEdges() {
 	scanf_s("%d", &coordinates.j);
 	return coordinates;
 }
-
 
 int setNumberOfExits(int oldNumberOfExits) {
 	int temp;
@@ -317,11 +342,11 @@ void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 	return;
 }
 
-
 #define hashCoordinatesToNumber(xi, xj) ((xi) * MAX_MAZE_DIMENSIONS + (xj))
 #define unhashICoordinateFromNumber(x) ((x) / MAX_MAZE_DIMENSIONS)
 #define unhashJCoordinateFromNumber(x) ((x) % MAX_MAZE_DIMENSIONS)
 
+#pragma region SET_AND_NODE_FUNCTIONS_FOR_PRIM
 int isNodeInSet(MazeCell *set, int numberOfNodesInSet, Coordinates node) {
 	int i;
 	MazeCell temp;
@@ -408,37 +433,39 @@ int isNodeSurrounded(MazeCell *set, int numberOfNodesInSet, Coordinates node, Ma
 	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
 	return (i == 4);
 }
+#pragma endregion
 
 void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
 	Coordinates tempNode, adjecentNode, tempWall;
-	int numberOfNodesInSet = 0;
+	int numberOfNodesInSet = 0, numberOfNodesInSet1 = 0;
 	int flag;
 	int i;
-	MazeCell set[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	MazeCell set[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS], set1[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
 
 	tempNode = getRandomNode(dimensions);
 	insertNodeToSet(set, &numberOfNodesInSet, tempNode);
+	insertNodeToSet(set1, &numberOfNodesInSet1, tempNode);
 
 	while (numberOfNodesInSet > 0) {
 		tempNode = getRandomNodeFromSet(set, numberOfNodesInSet);
-		tempWall = getRandomWall(tempNode);
-		flag = isAdjecentNodeInSet(set, numberOfNodesInSet, tempNode, tempWall, dimensions);
+		tempWall = getRandomWall(maze, tempNode);
+		flag = isAdjecentNodeInSet(set1, numberOfNodesInSet1, tempNode, tempWall, dimensions);
 		if (flag == 0) {
 			adjecentNode = getAdjecentNode(tempNode, tempWall, dimensions);
 			makePath(maze, dimensions, tempWall);
 			insertNodeToSet(set, &numberOfNodesInSet, adjecentNode);
+			insertNodeToSet(set1, &numberOfNodesInSet1, adjecentNode);
 		}
 		for (i = 0; i < numberOfNodesInSet; i++) {
 			tempNode.i = unhashICoordinateFromNumber(set[i]);
 			tempNode.j = unhashJCoordinateFromNumber(set[i]);
-			if (isNodeSurrounded(set, numberOfNodesInSet, tempNode, dimensions)) {
+			if (isNodeSurrounded(set1, numberOfNodesInSet1, tempNode, dimensions)) {
 				deleteNodeFromSet(set, &numberOfNodesInSet, tempNode);
 			}
 		}
 	}
 	return;
 }
-
 
 void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
 	int i;
@@ -469,7 +496,6 @@ void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates i
 	}
 	return;
 }
-
 
 int main() {
 	enum MenuOptions menuOption;
@@ -519,6 +545,9 @@ int main() {
 
 		case GenerateMaze:
 			if (maze != NULL) {
+				deallocateMaze(maze, dimensions.i);
+				maze = allocateMaze(maze, dimensions);
+				initMaze(maze, dimensions);
 
 				mazeGenerationPrim(maze, dimensions);	// TODO: implement
 
@@ -537,6 +566,10 @@ int main() {
 
 		case InputMaze:
 			if (maze != NULL) {
+				deallocateMaze(maze, dimensions.i);
+				maze = allocateMaze(maze, dimensions);
+				initMaze(maze, dimensions);
+
 				inputMaze(maze, dimensions);
 
 				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
