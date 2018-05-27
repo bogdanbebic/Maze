@@ -437,29 +437,29 @@ int isNodeSurrounded(MazeCell *set, int numberOfNodesInSet, Coordinates node, Ma
 
 void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
 	Coordinates tempNode, adjecentNode, tempWall;
-	int numberOfNodesInSet = 0, numberOfNodesInSet1 = 0;
+	int numberOfNodesInSet = 0, numberOfVisitedNodes = 0;
 	int flag;
 	int i;
-	MazeCell set[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS], set1[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	MazeCell set[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS], visited[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
 
 	tempNode = getRandomNode(dimensions);
 	insertNodeToSet(set, &numberOfNodesInSet, tempNode);
-	insertNodeToSet(set1, &numberOfNodesInSet1, tempNode);
+	insertNodeToSet(visited, &numberOfVisitedNodes, tempNode);
 
 	while (numberOfNodesInSet > 0) {
 		tempNode = getRandomNodeFromSet(set, numberOfNodesInSet);
 		tempWall = getRandomWall(maze, tempNode);
-		flag = isAdjecentNodeInSet(set1, numberOfNodesInSet1, tempNode, tempWall, dimensions);
+		flag = isAdjecentNodeInSet(visited, numberOfVisitedNodes, tempNode, tempWall, dimensions);
 		if (flag == 0) {
 			adjecentNode = getAdjecentNode(tempNode, tempWall, dimensions);
 			makePath(maze, dimensions, tempWall);
 			insertNodeToSet(set, &numberOfNodesInSet, adjecentNode);
-			insertNodeToSet(set1, &numberOfNodesInSet1, adjecentNode);
+			insertNodeToSet(visited, &numberOfVisitedNodes, adjecentNode);
 		}
 		for (i = 0; i < numberOfNodesInSet; i++) {
 			tempNode.i = unhashICoordinateFromNumber(set[i]);
 			tempNode.j = unhashJCoordinateFromNumber(set[i]);
-			if (isNodeSurrounded(set1, numberOfNodesInSet1, tempNode, dimensions)) {
+			if (isNodeSurrounded(visited, numberOfVisitedNodes, tempNode, dimensions)) {
 				deleteNodeFromSet(set, &numberOfNodesInSet, tempNode);
 			}
 		}
