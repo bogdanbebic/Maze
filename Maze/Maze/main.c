@@ -6,7 +6,7 @@
 #define DEFAULT_HEIGHT 5
 #define DEFAULT_WIDTH 5
 
-#define MAX_EXITS 10
+#define MAX_EXITS 3
 
 #define OUT_FILE_NAME ("outfile.txt")
 
@@ -58,7 +58,7 @@ int setNumberOfExits(int oldNumberOfExits) {
 	int temp;
 	printf("Input number of exits: ");
 	scanf_s("%d", &temp);
-	return temp > 0 ? temp : oldNumberOfExits;
+	return temp > 0 ? min(temp, MAX_EXITS) : oldNumberOfExits;
 }
 
 
@@ -147,8 +147,10 @@ void printMazeToFile(MazeCell **maze, MazeDimensions dimensions) {
 
 void deallocateMaze(MazeCell **maze, int height) {
 	int i;
-	for (i = 0; i < height; i++) {
-		free(maze[i]);
+	if (maze != NULL) {
+		for (i = 0; i < height; i++) {
+			free(maze[i]);
+		}
 	}
 	free(maze);
 	return;
@@ -310,13 +312,30 @@ int main() {
 
 				// TODO: Primov algoritam za generisanje lavirinta
 
-				if (checkCoordinates(dimensions, in)) {
-					// TODO: stavi random gde je ulaz i upisi na mapu
+				if (!checkCoordinates(dimensions, in)) {
+					in.i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
+					in.j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
 				}
+				maze[in.i][in.j] = IN;
+
 				for (i = 0; i < numberOfExits; i++) {
-					if (checkCoordinates(dimensions, exits[i])) {
-						// TODO: stavi random gde je izlaz i upisi na mapu
+					if (!checkCoordinates(dimensions, exits[i])) {
+						switch (i) {
+						case 0:
+							exits[i].i = hashCoordinates(0);
+							exits[i].j = hashCoordinates(0);
+							break;
+						case 1:
+							exits[i].i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
+							exits[i].j = hashCoordinates(0);
+							break;
+						case 2:
+							exits[i].i = hashCoordinates(0);
+							exits[i].j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
+							break;
+						}
 					}
+					maze[exits[i].i][exits[i].j] = OUT;
 				}
 
 				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
@@ -361,9 +380,12 @@ int main() {
 			break;
 
 		case SetCoordinatesForExitsAndIn:
+			maze[in.i][in.j] = PATH;
 			printf("Coordinates for in:\n");
 			in = setCoordinates(in, dimensions);
 			for (i = 0; i < numberOfExits; i++) {
+				if (checkCoordinates(dimensions, exits[i]))
+					maze[exits[i].i][exits[i].j] = PATH;
 				printf("Coordinates for exit[%d]:\n", i);
 				exits[i] = setCoordinates(exits[i], dimensions);
 			}
