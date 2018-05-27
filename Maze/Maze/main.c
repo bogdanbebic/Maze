@@ -5,6 +5,8 @@
 #define MAX_HEIGHT 80
 #define MAX_WIDTH 50
 
+#define MAX_MAZE_DIMENSIONS 100
+
 #define DEFAULT_HEIGHT 5
 #define DEFAULT_WIDTH 5
 
@@ -71,7 +73,7 @@ Coordinates getRandomWall(Coordinates node) {
 
 	randomWall.i = hashCoordinates(node.i);
 	randomWall.j = hashCoordinates(node.j);
-
+	// TODO: POPRAVI DA UZIMA SAMO ZIDOVE, A NE I PUTEVE
 	switch (direction) {
 	case UP:
 		randomWall.i--;
@@ -316,21 +318,124 @@ void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 }
 
 
+#define hashCoordinatesToNumber(xi, xj) ((xi) * MAX_MAZE_DIMENSIONS + (xj))
+#define unhashICoordinateFromNumber(x) ((x) / MAX_MAZE_DIMENSIONS)
+#define unhashJCoordinateFromNumber(x) ((x) % MAX_MAZE_DIMENSIONS)
+
+int isNodeInSet(MazeCell *set, int numberOfNodesInSet, Coordinates node) {
+	int i;
+	MazeCell temp;
+	temp = hashCoordinatesToNumber(node.i, node.j);
+	for (i = 0; i < numberOfNodesInSet; i++) {
+		if (temp == set[i])
+			return 1;
+	}
+	return 0;
+}
+
+void insertNodeToSet(MazeCell *set, int *numberOfNodesInSet, Coordinates node) {
+	if (!isNodeInSet(set, *numberOfNodesInSet, node)) {
+		set[(*numberOfNodesInSet)++] = hashCoordinatesToNumber(node.i, node.j);
+	}
+	return;
+}
+
+void deleteNodeFromSet(MazeCell *set, int *numberOfNodesInSet, Coordinates node) {
+	int i;
+	MazeCell temp, thirdLocation;
+	temp = hashCoordinatesToNumber(node.i, node.j);
+	for (i = 0; i < *numberOfNodesInSet; i++) {
+		if (temp == set[i]) {
+			thirdLocation = set[*numberOfNodesInSet - 1];
+			set[*numberOfNodesInSet - 1] = temp;
+			set[i] = thirdLocation;
+			(*numberOfNodesInSet)--;
+			break;
+		}
+	}
+	return;
+}
+
+Coordinates getRandomNodeFromSet(MazeCell *set, int numberOfNodesInSet) {
+	int i;
+	Coordinates randomNodeFromSet;
+	i = randomInt(0, numberOfNodesInSet);
+	randomNodeFromSet.i = unhashICoordinateFromNumber(set[i]);
+	randomNodeFromSet.j = unhashJCoordinateFromNumber(set[i]);
+	return randomNodeFromSet;
+}
+
+Coordinates getAdjecentNode(Coordinates node, Coordinates wall, MazeDimensions dimensions) {
+	Coordinates adjecentNode = node;
+	if (hashCoordinates(node.i) < wall.i) {
+		adjecentNode.i++;
+	}
+	else if (hashCoordinates(node.i) > wall.i) {
+		adjecentNode.i--;
+	}
+	if (hashCoordinates(node.j) < wall.j) {
+		adjecentNode.j++;
+	}
+	else if (hashCoordinates(node.j) > wall.j) {
+		adjecentNode.j--;
+	}
+	return adjecentNode;
+}
+
+int isAdjecentNodeInSet(MazeCell *set, int numberOfNodesInSet, Coordinates node, Coordinates wall, MazeDimensions dimensions) {
+	Coordinates adjecentNode = node;
+	if (wall.i == 0 || wall.j == 0 || wall.i == dimensions.i - 1 || wall.j == dimensions.j - 1) {
+		return 1;
+	}
+	adjecentNode = getAdjecentNode(node, wall, dimensions);
+	return isNodeInSet(set, numberOfNodesInSet, adjecentNode);
+}
+
+int isNodeSurrounded(MazeCell *set, int numberOfNodesInSet, Coordinates node, MazeDimensions dimensions) {
+	int i = 0;
+	Coordinates wall;
+	wall.i = hashCoordinates(node.i) + 1;
+	wall.j = hashCoordinates(node.j);
+	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
+	wall.i = hashCoordinates(node.i) - 1;
+	wall.j = hashCoordinates(node.j);
+	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
+	wall.i = hashCoordinates(node.i);
+	wall.j = hashCoordinates(node.j) + 1;
+	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
+	wall.i = hashCoordinates(node.i);
+	wall.j = hashCoordinates(node.j) - 1;
+	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
+	return (i == 4);
+}
+
 void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
-	Coordinates tempNode, tempWall;
+	Coordinates tempNode, adjecentNode, tempWall;
 	int numberOfNodesInSet = 0;
+	int flag;
+	int i;
+	MazeCell set[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
 
 	tempNode = getRandomNode(dimensions);
-	// TODO: insertToSet(tempNode);
-	// TODO: numberOfNodesInset++;
+	insertNodeToSet(set, &numberOfNodesInSet, tempNode);
 
-	// TODO: while (numberOfNodesInSet < unhashCoordinates(dimensions.i) * unhashCoordinates(dimensions.j))
-	// TODO: tempNode = getRandomNodeFromSet(set); // TODO: implement
-	tempWall = getRandomWall(tempNode);
-	// TODO: vidi da li je node prekoputa u skupu
-	// TODO: ako nije -> napravi put izmedju, dodaj node prekoputa u skup, numberOfNodesInSet++;
-	// TODO: end_while
-
+	while (numberOfNodesInSet > 0) {
+		tempNode = getRandomNodeFromSet(set, numberOfNodesInSet);
+		tempWall = getRandomWall(tempNode);
+		flag = isAdjecentNodeInSet(set, numberOfNodesInSet, tempNode, tempWall, dimensions);
+		if (flag == 0) {
+			adjecentNode = getAdjecentNode(tempNode, tempWall, dimensions);
+			makePath(maze, dimensions, tempWall);
+			insertNodeToSet(set, &numberOfNodesInSet, adjecentNode);
+		}
+		for (i = 0; i < numberOfNodesInSet; i++) {
+			tempNode.i = unhashICoordinateFromNumber(set[i]);
+			tempNode.j = unhashJCoordinateFromNumber(set[i]);
+			if (isNodeSurrounded(set, numberOfNodesInSet, tempNode, dimensions)) {
+				deleteNodeFromSet(set, &numberOfNodesInSet, tempNode);
+			}
+		}
+	}
 	return;
 }
 
