@@ -497,6 +497,87 @@ void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates i
 	return;
 }
 
+
+#pragma region QUEUE_FUNCTIONS
+
+void insertNodeToQueue(MazeCell *queue, int *numberOfNodesInQueue, Coordinates node) {
+	MazeCell temp;
+	temp = hashCoordinatesToNumber(node.i, node.j);
+	queue[*numberOfNodesInQueue] = temp;
+	(*numberOfNodesInQueue)++;
+	return;
+}
+
+Coordinates deleteNodeFromQueue(MazeCell *queue, int *numberOfNodesInQueue) {
+	int i;
+	Coordinates node;
+	node.i = unhashICoordinateFromNumber(queue[0]);
+	node.j = unhashJCoordinateFromNumber(queue[0]);
+	for (i = 0; i < *numberOfNodesInQueue - 1; i++) {
+		queue[i] = queue[i + 1];
+	}
+	(*numberOfNodesInQueue)--;
+	return node;
+}
+
+#pragma endregion
+
+
+typedef struct BFSsolutionStruct {
+	Coordinates solution[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	int numberOfSteps;
+} BFSsolution;
+
+BFSsolution findBFSsolution(MazeCell **maze, MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
+	MazeCell queue[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS], visited[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	int numberOfNodesInQueue = 0, numberOfVisitedNodes = 0;
+	BFSsolution bfsSol;
+	Coordinates current;
+	MazeCell currentCell;
+	int i;
+	for (i = 0; i < numberOfExits; i++) {
+		insertNodeToQueue(queue, &numberOfNodesInQueue, exits[i]);
+		insertNodeToQueue(visited, &numberOfVisitedNodes, exits[i]);
+	}
+	while (numberOfNodesInQueue > 0) {
+		// TODO: izvadi jednog iz reda
+		// TODO: dodaj svakog neposecenog suseda u red
+		// TODO: za svakog neposecenog suseda u matrici -> maze[i][j] = max(vrednostProslog, PATH)++;
+	}
+
+	if (numberOfVisitedNodes < unhashCoordinates(dimensions.i) * unhashCoordinates(dimensions.j)) {
+		bfsSol.numberOfSteps = -1;
+		return bfsSol;
+	}
+
+	current = in;
+	currentCell = maze[current.i][current.j];
+
+	bfsSol.numberOfSteps = 0;
+	bfsSol.solution[bfsSol.numberOfSteps++] = current;
+
+	while (currentCell != OUT) {
+		// TODO: od svih suseda koji su dostizni izaberi onaj sa najmanjim maze[i][j]
+		bfsSol.solution[bfsSol.numberOfSteps++] = current;
+		// TODO: idi u tog suseda
+	}
+
+	return bfsSol;
+}
+
+void printBFSsolutionToStdout(BFSsolution bfsSol) {
+	int i;
+	if (bfsSol.numberOfSteps < 0) {
+		printf("There is no solution for this maze :(\n");
+		return;
+	}
+	printf("BFS solution:\n");
+	for (i = 0; i < bfsSol.numberOfSteps; i++) {
+		printf("(%d , %d)\n", bfsSol.solution[i].i, bfsSol.solution[i].j);
+	}
+	return;
+}
+
 int main() {
 	enum MenuOptions menuOption;
 	int numberOfExits = 1;
@@ -504,6 +585,7 @@ int main() {
 	int isGameRunning = 1;
 	MazeDimensions dimensions;
 	Coordinates exits[MAX_EXITS], in;
+	BFSsolution bfsSol;
 	int i;
 	int temp;
 
@@ -586,7 +668,9 @@ int main() {
 		case SolveMaze:
 			if (maze != NULL && checkAllCoordinates(dimensions, in, exits, numberOfExits)) {
 				// TODO: BFS za resavanje lavirinta
+				bfsSol = findBFSsolution(maze, dimensions, in, exits, numberOfExits);
 				// TODO: ispis niza koraka za resavanje
+				printBFSsolutionToStdout(bfsSol);
 			}
 			else {
 				printf("There is no maze or coordinates for in or exits are out of bounds\n");
