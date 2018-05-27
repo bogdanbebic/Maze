@@ -346,7 +346,8 @@ void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 #define unhashICoordinateFromNumber(x) ((x) / MAX_MAZE_DIMENSIONS)
 #define unhashJCoordinateFromNumber(x) ((x) % MAX_MAZE_DIMENSIONS)
 
-#pragma region SET_AND_NODE_FUNCTIONS_FOR_PRIM
+#pragma region SET_AND_NODE_FUNCTIONS
+
 int isNodeInSet(MazeCell *set, int numberOfNodesInSet, Coordinates node) {
 	int i;
 	MazeCell temp;
@@ -433,6 +434,7 @@ int isNodeSurrounded(MazeCell *set, int numberOfNodesInSet, Coordinates node, Ma
 	i += isAdjecentNodeInSet(set, numberOfNodesInSet, node, wall, dimensions);
 	return (i == 4);
 }
+
 #pragma endregion
 
 void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
@@ -467,13 +469,13 @@ void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
 	return;
 }
 
-void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
+void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates *in, Coordinates exits[], int numberOfExits) {
 	int i;
-	if (!checkCoordinates(dimensions, in)) {
-		in.i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
-		in.j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
+	if (!checkCoordinates(dimensions, *in)) {
+		in->i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
+		in->j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
 	}
-	maze[in.i][in.j] = IN;
+	maze[in->i][in->j] = IN;
 
 	for (i = 0; i < numberOfExits; i++) {
 		if (!checkCoordinates(dimensions, exits[i])) {
@@ -497,6 +499,165 @@ void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates i
 	return;
 }
 
+
+#pragma region QUEUE_FUNCTIONS
+
+void insertNodeToQueue(MazeCell *queue, int *numberOfNodesInQueue, Coordinates node) {
+	MazeCell temp;
+	temp = hashCoordinatesToNumber(node.i, node.j);
+	queue[*numberOfNodesInQueue] = temp;
+	(*numberOfNodesInQueue)++;
+	return;
+}
+
+Coordinates deleteNodeFromQueue(MazeCell *queue, int *numberOfNodesInQueue) {
+	int i;
+	Coordinates node;
+	node.i = unhashICoordinateFromNumber(queue[0]);
+	node.j = unhashJCoordinateFromNumber(queue[0]);
+	for (i = 0; i < *numberOfNodesInQueue - 1; i++) {
+		queue[i] = queue[i + 1];
+	}
+	(*numberOfNodesInQueue)--;
+	return node;
+}
+
+#pragma endregion
+
+
+typedef struct BFSsolutionStruct {
+	Coordinates solution[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	int numberOfSteps;
+} BFSsolution;
+
+BFSsolution findBFSsolution(MazeCell **maze, MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
+	MazeCell queue[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS], visited[MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS];
+	int numberOfNodesInQueue = 0, numberOfVisitedNodes = 0;
+	BFSsolution bfsSol;
+	Coordinates node;
+	Coordinates wall, adjecentNode;
+	int i;
+
+	for (i = 0; i < numberOfExits; i++) {
+		exits[i].i = unhashCoordinates(exits[i].i);
+		exits[i].j = unhashCoordinates(exits[i].j);
+		insertNodeToQueue(queue, &numberOfNodesInQueue, exits[i]);
+		insertNodeToSet(visited, &numberOfVisitedNodes, exits[i]);
+		exits[i].i = hashCoordinates(exits[i].i);
+		exits[i].j = hashCoordinates(exits[i].j);
+	}
+
+	while (numberOfNodesInQueue > 0) {
+		node = deleteNodeFromQueue(queue, &numberOfNodesInQueue);
+
+		wall.i = hashCoordinates(node.i) + 1;
+		wall.j = hashCoordinates(node.j);
+		if (!isAdjecentNodeInSet(visited, numberOfVisitedNodes, node, wall, dimensions) && maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			insertNodeToQueue(queue, &numberOfNodesInQueue, adjecentNode);
+			insertNodeToSet(visited, &numberOfVisitedNodes, adjecentNode);
+			maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] = max(PATH, maze[hashCoordinates(node.i)][hashCoordinates(node.j)]) + 1;
+		}
+		wall.i = hashCoordinates(node.i) - 1;
+		wall.j = hashCoordinates(node.j);
+		if (!isAdjecentNodeInSet(visited, numberOfVisitedNodes, node, wall, dimensions) && maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			insertNodeToQueue(queue, &numberOfNodesInQueue, adjecentNode);
+			insertNodeToSet(visited, &numberOfVisitedNodes, adjecentNode);
+			maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] = max(PATH, maze[hashCoordinates(node.i)][hashCoordinates(node.j)]) + 1;
+		}
+		wall.i = hashCoordinates(node.i);
+		wall.j = hashCoordinates(node.j) + 1;
+		if (!isAdjecentNodeInSet(visited, numberOfVisitedNodes, node, wall, dimensions) && maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			insertNodeToQueue(queue, &numberOfNodesInQueue, adjecentNode);
+			insertNodeToSet(visited, &numberOfVisitedNodes, adjecentNode);
+			maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] = max(PATH, maze[hashCoordinates(node.i)][hashCoordinates(node.j)]) + 1;
+		}
+		wall.i = hashCoordinates(node.i);
+		wall.j = hashCoordinates(node.j) - 1;
+		if (!isAdjecentNodeInSet(visited, numberOfVisitedNodes, node, wall, dimensions) && maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			insertNodeToQueue(queue, &numberOfNodesInQueue, adjecentNode);
+			insertNodeToSet(visited, &numberOfVisitedNodes, adjecentNode);
+			maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] = max(PATH, maze[hashCoordinates(node.i)][hashCoordinates(node.j)]) + 1;
+		}
+	}
+
+	if (numberOfVisitedNodes < unhashCoordinates(dimensions.i) * unhashCoordinates(dimensions.j)) {
+		bfsSol.numberOfSteps = -1;
+		return bfsSol;
+	}
+
+	node.i = unhashCoordinates(in.i);
+	node.j = unhashCoordinates(in.j);
+
+	bfsSol.numberOfSteps = 0;
+	bfsSol.solution[bfsSol.numberOfSteps++] = node;
+
+	MazeCell choice = MAX_MAZE_DIMENSIONS * MAX_MAZE_DIMENSIONS + 1;
+
+	while (choice != OUT) {
+		Coordinates temp;
+		// DOWN
+		wall.i = hashCoordinates(node.i) + 1;
+		wall.j = hashCoordinates(node.j);
+		if (maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			choice = maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)];
+			temp = adjecentNode;
+		}
+		// UP
+		wall.i = hashCoordinates(node.i) - 1;
+		wall.j = hashCoordinates(node.j);
+		if (maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			if (maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] < choice) {
+				temp = adjecentNode;
+				choice = maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)];
+			}
+		}
+		// RIGHT
+		wall.i = hashCoordinates(node.i);
+		wall.j = hashCoordinates(node.j) + 1;
+		if (maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			if (maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] < choice) {
+				temp = adjecentNode;
+				choice = maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)];
+			}
+		}
+		// LEFT
+		wall.i = hashCoordinates(node.i);
+		wall.j = hashCoordinates(node.j) - 1;
+		if (maze[wall.i][wall.j] != WALL) {
+			adjecentNode = getAdjecentNode(node, wall, dimensions);
+			if (maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)] < choice) {
+				temp = adjecentNode;
+				choice = maze[hashCoordinates(adjecentNode.i)][hashCoordinates(adjecentNode.j)];
+			}
+		}
+		node = temp;
+		bfsSol.solution[bfsSol.numberOfSteps++] = node;
+	}
+
+	return bfsSol;
+}
+
+void printBFSsolutionToStdout(BFSsolution bfsSol) {
+	int i;
+	if (bfsSol.numberOfSteps < 0) {
+		printf("There is no solution for this maze :(\n");
+		return;
+	}
+	printf("BFS solution:\n");
+	for (i = 0; i < bfsSol.numberOfSteps; i++) {
+		printf("(%d , %d)\n", bfsSol.solution[i].i, bfsSol.solution[i].j);
+	}
+	return;
+}
+
+
 int main() {
 	enum MenuOptions menuOption;
 	int numberOfExits = 1;
@@ -504,6 +665,7 @@ int main() {
 	int isGameRunning = 1;
 	MazeDimensions dimensions;
 	Coordinates exits[MAX_EXITS], in;
+	BFSsolution bfsSol;
 	int i;
 	int temp;
 
@@ -549,13 +711,12 @@ int main() {
 
 				mazeGenerationPrim(maze, dimensions);
 
-				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
+				setMazeInAndExits(maze, dimensions, &in, exits, numberOfExits);
 
 				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
 					printMazeToStdout(maze, dimensions);
 				}
 				printMazeToFile(maze, dimensions);
-
 			}
 			else {
 				printf("There is no maze\n");
@@ -570,13 +731,12 @@ int main() {
 
 				inputMaze(maze, dimensions);
 
-				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
+				setMazeInAndExits(maze, dimensions, &in, exits, numberOfExits);
 
 				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
 					printMazeToStdout(maze, dimensions);
 				}
 				printMazeToFile(maze, dimensions);
-
 			}
 			else {
 				printf("There is no maze\n");
@@ -586,7 +746,9 @@ int main() {
 		case SolveMaze:
 			if (maze != NULL && checkAllCoordinates(dimensions, in, exits, numberOfExits)) {
 				// TODO: BFS za resavanje lavirinta
+				bfsSol = findBFSsolution(maze, dimensions, in, exits, numberOfExits);
 				// TODO: ispis niza koraka za resavanje
+				printBFSsolutionToStdout(bfsSol);
 			}
 			else {
 				printf("There is no maze or coordinates for in or exits are out of bounds\n");
