@@ -514,14 +514,12 @@ int main() {
 	*	!!!!!
 	*/
 
-	exits[0].i = hashCoordinates(0);
-	exits[0].j = hashCoordinates(0);
-	for (i = 1; i < MAX_EXITS; i++) {
+	for (i = 0; i < MAX_EXITS; i++) {
 		exits[i].i = -1;
 		exits[i].j = -1;
 	}
-	in.i = hashCoordinates(DEFAULT_HEIGHT - 1);
-	in.j = hashCoordinates(DEFAULT_WIDTH - 1);
+	in.i = -1;
+	in.j = -1;
 
 	dimensions.i = hashCoordinates(DEFAULT_HEIGHT);
 	dimensions.j = hashCoordinates(DEFAULT_WIDTH);
@@ -549,7 +547,7 @@ int main() {
 				maze = allocateMaze(maze, dimensions);
 				initMaze(maze, dimensions);
 
-				mazeGenerationPrim(maze, dimensions);	// TODO: implement
+				mazeGenerationPrim(maze, dimensions);
 
 				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
 
@@ -609,7 +607,8 @@ int main() {
 			break;
 
 		case SetCoordinatesForExitsAndIn:
-			maze[in.i][in.j] = PATH;
+			if (checkCoordinates(dimensions, in))
+				maze[in.i][in.j] = PATH;
 			printf("Coordinates for in:\n");
 			in = setCoordinates(in, dimensions);
 			for (i = 0; i < numberOfExits; i++) {
