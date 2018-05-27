@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define MAX_HEIGHT 80
 #define MAX_WIDTH 50
+
 #define DEFAULT_HEIGHT 5
 #define DEFAULT_WIDTH 5
 
 #define MAX_EXITS 3
 
 #define OUT_FILE_NAME ("outfile.txt")
+
 
 #define hashCoordinates(x) ((x) * 2 + 1)
 #define unhashCoordinates(x) (((x) - 1) / 2)
@@ -17,6 +20,9 @@
 enum MazeObjects { WALL, IN, OUT, PATH };
 
 enum MenuOptions { ExitGame, GenerateMaze, InputMaze, SolveMaze, SetNumberOfExits, SetCoordinatesForExitsAndIn, SetMazeDimensions, NumberOfMenuOptions };
+
+enum MazeDirections { UP, RIGHT, DOWN, LEFT , NUMBER_OF_DIRECTIONS };
+
 
 typedef struct MazeDimensionsStruct {
 	int i;
@@ -43,6 +49,49 @@ void printMenu() {
 	return;
 }
 
+#pragma region RANDOM_FUNCTIONS
+int randomInt(int low, int high) {
+	double x;
+	x = (double)rand() / (RAND_MAX + 1);
+	x = low + (high - low) * x;
+	return (int)x;
+}
+
+Coordinates getRandomNode(MazeDimensions dimensions) {
+	Coordinates randomNode;
+	randomNode.i = randomInt(0, unhashCoordinates(dimensions.i));
+	randomNode.j = randomInt(0, unhashCoordinates(dimensions.j));
+	return randomNode;
+}
+
+Coordinates getRandomWall(Coordinates node) {
+	enum MazeDirections direction;
+	Coordinates randomWall;
+	direction = randomInt(0, NUMBER_OF_DIRECTIONS);
+
+	randomWall.i = hashCoordinates(node.i);
+	randomWall.j = hashCoordinates(node.j);
+
+	switch (direction) {
+	case UP:
+		randomWall.i--;
+		break;
+	case RIGHT:
+		randomWall.j++;
+		break;
+	case DOWN:
+		randomWall.i++;
+		break;
+	case LEFT:
+		randomWall.j--;
+		break;
+	default:
+		break;
+	}
+
+	return randomWall;
+}
+#pragma endregion
 
 Coordinates readCoordinatesForEdges() {
 	Coordinates coordinates;
@@ -61,7 +110,7 @@ int setNumberOfExits(int oldNumberOfExits) {
 	return temp > 0 ? min(temp, MAX_EXITS) : oldNumberOfExits;
 }
 
-
+#pragma region MAZE_COORDINATES_SETTING_FUNCTIONS
 MazeDimensions setMazeDimensions(MazeDimensions oldMazeDimensions) {
 	MazeDimensions newMazeDimensions;
 	printf("Input height of maze: ");
@@ -85,8 +134,9 @@ Coordinates setCoordinates(Coordinates oldCoordinates, MazeDimensions dimensions
 	newCoordinates = newCoordinates.i < dimensions.i && newCoordinates.j < dimensions.j ? newCoordinates : oldCoordinates;
 	return newCoordinates;
 }
+#pragma endregion
 
-
+#pragma region MAZE_OUTPUT
 void printMazeToStdout(MazeCell **maze, MazeDimensions dimensions) {
 	int i, j;
 	enum MazeObjects temp;
@@ -143,8 +193,9 @@ void printMazeToFile(MazeCell **maze, MazeDimensions dimensions) {
 	fclose(outFile);
 	return;
 }
+#pragma endregion
 
-
+#pragma region MAZE_INIT
 void deallocateMaze(MazeCell **maze, int height) {
 	int i;
 	if (maze != NULL) {
@@ -194,8 +245,9 @@ void initMaze(MazeCell **maze, MazeDimensions dimensions) {
 	}
 	return;
 }
+#pragma endregion
 
-
+#pragma region COORDINATES_CHECK
 int checkCoordinates(MazeDimensions dimensions, Coordinates coordinates) {
 	if (dimensions.i <= coordinates.i || dimensions.j <= coordinates.j || coordinates.i < 0 || coordinates.j < 0)
 		return 0;
@@ -221,8 +273,9 @@ int checkAllCoordinates(MazeDimensions dimensions, Coordinates in, Coordinates e
 	}
 	return flag;
 }
+#pragma endregion
 
-
+#pragma region MAZE_CELL_FUNCTIONS
 int makePath(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates) {
 	if (checkCoordinatesForEdges(dimensions, coordinates)) {
 		maze[coordinates.i][coordinates.j] = PATH;
@@ -242,7 +295,7 @@ int makeWall(MazeCell **maze, MazeDimensions dimensions, Coordinates coordinates
 		return 0;
 	}
 }
-
+#pragma endregion
 
 void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 	int flagPath = 1, flagWall = 1;
@@ -258,6 +311,56 @@ void inputMaze(MazeCell **maze, MazeDimensions dimensions) {
 		printf("Input coordinates for which to make wall:\n");
 		temp = readCoordinatesForEdges();
 		flagWall = makeWall(maze, dimensions, temp);
+	}
+	return;
+}
+
+
+void mazeGenerationPrim(MazeCell **maze, MazeDimensions dimensions) {
+	Coordinates tempNode, tempWall;
+	int numberOfNodesInSet = 0;
+
+	tempNode = getRandomNode(dimensions);
+	// TODO: insertToSet(tempNode);
+	// TODO: numberOfNodesInset++;
+
+	// TODO: while (numberOfNodesInSet < unhashCoordinates(dimensions.i) * unhashCoordinates(dimensions.j))
+	// TODO: tempNode = getRandomNodeFromSet(set); // TODO: implement
+	tempWall = getRandomWall(tempNode);
+	// TODO: vidi da li je node prekoputa u skupu
+	// TODO: ako nije -> napravi put izmedju, dodaj node prekoputa u skup, numberOfNodesInSet++;
+	// TODO: end_while
+
+	return;
+}
+
+
+void setMazeInAndExits(MazeCell **maze, MazeDimensions dimensions, Coordinates in, Coordinates exits[], int numberOfExits) {
+	int i;
+	if (!checkCoordinates(dimensions, in)) {
+		in.i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
+		in.j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
+	}
+	maze[in.i][in.j] = IN;
+
+	for (i = 0; i < numberOfExits; i++) {
+		if (!checkCoordinates(dimensions, exits[i])) {
+			switch (i) {
+			case 0:
+				exits[i].i = hashCoordinates(0);
+				exits[i].j = hashCoordinates(0);
+				break;
+			case 1:
+				exits[i].i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
+				exits[i].j = hashCoordinates(0);
+				break;
+			case 2:
+				exits[i].i = hashCoordinates(0);
+				exits[i].j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
+				break;
+			}
+		}
+		maze[exits[i].i][exits[i].j] = OUT;
 	}
 	return;
 }
@@ -295,6 +398,8 @@ int main() {
 	maze = allocateMaze(maze, dimensions);
 	initMaze(maze, dimensions);
 
+	srand((unsigned int)time(NULL));
+
 	while (isGameRunning) {
 		printMenu();
 
@@ -310,39 +415,15 @@ int main() {
 		case GenerateMaze:
 			if (maze != NULL) {
 
-				// TODO: Primov algoritam za generisanje lavirinta
+				mazeGenerationPrim(maze, dimensions);	// TODO: implement
 
-				if (!checkCoordinates(dimensions, in)) {
-					in.i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
-					in.j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
-				}
-				maze[in.i][in.j] = IN;
-
-				for (i = 0; i < numberOfExits; i++) {
-					if (!checkCoordinates(dimensions, exits[i])) {
-						switch (i) {
-						case 0:
-							exits[i].i = hashCoordinates(0);
-							exits[i].j = hashCoordinates(0);
-							break;
-						case 1:
-							exits[i].i = hashCoordinates(unhashCoordinates(dimensions.i) - 1);
-							exits[i].j = hashCoordinates(0);
-							break;
-						case 2:
-							exits[i].i = hashCoordinates(0);
-							exits[i].j = hashCoordinates(unhashCoordinates(dimensions.j) - 1);
-							break;
-						}
-					}
-					maze[exits[i].i][exits[i].j] = OUT;
-				}
+				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
 
 				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
 					printMazeToStdout(maze, dimensions);
 				}
-
 				printMazeToFile(maze, dimensions);
+
 			}
 			else {
 				printf("There is no maze\n");
@@ -352,6 +433,14 @@ int main() {
 		case InputMaze:
 			if (maze != NULL) {
 				inputMaze(maze, dimensions);
+
+				setMazeInAndExits(maze, dimensions, in, exits, numberOfExits);
+
+				if (dimensions.i < MAX_HEIGHT && dimensions.j < MAX_WIDTH) {
+					printMazeToStdout(maze, dimensions);
+				}
+				printMazeToFile(maze, dimensions);
+
 			}
 			else {
 				printf("There is no maze\n");
@@ -372,6 +461,8 @@ int main() {
 			temp = setNumberOfExits(numberOfExits);
 			if (temp < numberOfExits) {
 				for (i = temp; i < MAX_EXITS; i++) {
+					if (checkCoordinates(dimensions, exits[i]))
+						maze[exits[i].i][exits[i].j] = PATH;
 					exits[i].i = -1;
 					exits[i].j = -1;
 				}
@@ -399,7 +490,7 @@ int main() {
 				initMaze(maze, dimensions);
 			}
 			else {
-				printf("Unsuccessful allocation");
+				printf("Unsuccessful allocation\n");
 			}
 			break;
 
